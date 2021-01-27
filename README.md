@@ -1,4 +1,4 @@
-# Word-timestamp-remover
+# Word timestamp remover
 Powershell script to remove track changes timestamp from Word documents 
 
 This PowerShell script let's you remove the timestamp from the track changes function in Word documents.
