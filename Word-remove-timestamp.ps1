@@ -16,18 +16,14 @@
 	You can change the timestamp by hand, one by one because every timestamp is different.
 	
 	In this case, when you work with restricted access, you can do the task with a PowerShell script.
-	I first tried to use a batch file. But it did not work for me. I tried to make the script more
-	comfortable but i couldn't figure out how this works with Powershell. I'm on linux usually.
-	I got a linux script using sed for the taks. Much easier than Powershell, but i need a Solution on Windows.
-	I left my testcode in this script. My intention was, let user enter their name and organisation name 
-	and use this as a variable for the search and replace task. Maybe i can fix this in an updated version.
-	For the moment, you have to change the lines 101:102, 108;109, 114;115 with your data by hand.
+	I first tried to use a batch file. But it did not work for me. 
 	
 	Move the Word docx file into the same folder this script is stored in. 
 	Open a Powershell Terminal and set the environment by entering this command: Set-ExecutionPolicy RemoteSigned -force
 	Start the script by entering .\Word-remove-timestamp.ps1 (or whatever). When you run the script,
-	it will show you the docx files in the folder and let you choose the file you want to free from the timestamp.
-	It renames the file you choose to a .zip file and extract it.
+	it will ask you for the specific Author name and Organization name you want to free from the timestamp.
+	It then will show you the docx files in the folder and let you choose the file. It renames the file you choose
+	to a .zip file and extract it.
 	It starts to replace the word "date" with "ignore". It also replace the timestamp with the static date 1970-01-01T00:00:00Z.
 	
 	After that, it stores the files back to the folder, zip the folders and rename the .zip file back to .docx.
@@ -38,14 +34,15 @@
 
 # Set-ExecutionPolicy RemoteSigned -force
 # Write-Host "The Author's Surename, Name and in the next step the Organization name is required."
-<#
+
 param (
 	[Parameter(Mandatory)]
     $Author,
-	[Parameter(Mandatory)]
+    
+    [Parameter(Mandatory)]
     $Organization
 )
-#>
+
 
 # Let's see what .docx files we have in this folder. 
 Get-ChildItem -Path .\*.docx -Force
@@ -59,7 +56,7 @@ $WordDoc = Read-Host -Prompt 'Enter the filename you want to change (without ext
 
 
 #$Author = [Regex]::Escape($Author)
-#$Organization = [Regex]::Escape($Organization)
+$Organization = [Regex]::Escape($Organization)
 
 $Ext = '.docx'
 $WordDocExt = $WordDoc+$Ext
@@ -79,6 +76,11 @@ Expand-Archive -Path .\$($ZipDoc) -DestinationPath .\$($WordDoc)
 # We don't need the Zip file anymore. Let's delete it.
 Remove-Item $($ZipDoc)
 
+#
+# We are looking for 	w:author="Surename, Name (Organization)" w:date="2020-12-11T08:18:00Z"
+# and want to replace                                     w:ignore="1970-01-01T00:00:00Z"
+# where $Author is param {0} and $Organization is param {1}
+#
 <#
 # Let's replace the timestamp in documents.xml. 
 (Get-Content .\$($WordDoc)\word\document.xml) -replace @(
@@ -94,27 +96,28 @@ Remove-Item $($ZipDoc)
 #>
 
 
-# Let's replace the timestamp in documents.xml. 
+# Let's replace the timestamp in document.xml. 
 (Get-Content .\$($WordDoc)\word\document.xml) -replace @(
-	      'w:author="<Your Surename, Name> [^"]+"' -f $Author
-          'w:author="<Your Surename, Name (Organisation)" w:ignore="1970-01-01T00:00:00Z"'
+	       '(?<=w:author="{0} ({1})" )w:date="[^"]+"' -f $Author, $Organization
+           'w:ignore="1970-01-01T00:00:00Z"'
 ) | Set-Content .\$($WordDoc)\word\document.xml
 
 
 # Let's replace the timestamp in comments.xml. 
 (Get-Content .\$($WordDoc)\word\comments.xml) -replace @(
-	        'w:author="<Your Surename, Name> [^"]+"' -f $Author
-          'w:author="<Your Surename, Name (Organisation)" w:ignore="1970-01-01T00:00:00Z"'
+	        '(?<=w:author="{0} ({1})" )w:date="[^"]+"' -f $Author, $Organization
+            'w:ignore="1970-01-01T00:00:00Z"'
 ) | Set-Content .\$($WordDoc)\word\comments.xml
 
 # Let's replace the timestamp in footnotes.xml. 
 (Get-Content .\$($WordDoc)\word\footnotes.xml) -replace @(
-	        'w:author="<Your Surename, Name> [^"]+"' -f $Author
-          'w:author="<Your Surename, Name (Organisation)" w:ignore="1970-01-01T00:00:00Z"'
+	        '(?<=w:author="{0} ({1})" )w:date="[^"]+"' -f $Author, $Organization
+            'w:ignore="1970-01-01T00:00:00Z"'
 ) | Set-Content .\$($WordDoc)\word\footnotes.xml
 
 
 # Let's recreate the Zipfile
+# 7zip a '$ZipDocNew' $WordDoc 
 Compress-Archive -Path .\$($WordDoc)\* -CompressionLevel Optimal -DestinationPath .\$($ZipDocNew) 
 
 # Let's rename the .zip back to .docx
@@ -122,6 +125,6 @@ Rename-Item -Path $($ZipDocNew) -NewName $($WordDocNewExt)
 #Copy-Item $($ZipDocNew) -Destination $($WordDocNewExt)
 
 # We don't need the Zip file anymore. Let's delete it.
-Remove-Item $($WordDoc)
+Remove-Item -Recurse -Force $($WordDoc) 
 # Remove-Item $($ZipDocNew)
 
