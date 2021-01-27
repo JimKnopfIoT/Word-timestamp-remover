@@ -76,26 +76,6 @@ Expand-Archive -Path .\$($ZipDoc) -DestinationPath .\$($WordDoc)
 # We don't need the Zip file anymore. Let's delete it.
 Remove-Item $($ZipDoc)
 
-#
-# We are looking for 	w:author="Surename, Name (Organization)" w:date="2020-12-11T08:18:00Z"
-# and want to replace                                     w:ignore="1970-01-01T00:00:00Z"
-# where $Author is param {0} and $Organization is param {1}
-#
-<#
-# Let's replace the timestamp in documents.xml. 
-(Get-Content .\$($WordDoc)\word\document.xml) -replace @(
-	 'w:author="[^"]+" w:date="[^"]+"'
-    'w:author="{0} ({1})" w:ignore="1970-01-01T00:00:00Z"' -f $Author, $Organization
-) | Set-Content .\$($WordDoc)\word\document.xml
-
-# Let's replace the timestamp in comments.xml. 
-(Get-Content .\$($WordDoc)\word\comments.xml) -replace @(
-	 'w:author="[^"]+" w:date="[^"]+"'
-    'w:author="{0} ({1})" w:ignore="1970-01-01T00:00:00Z"' -f $Author, $Organization
-) | Set-Content .\$($WordDoc)\word\comments.xml
-#>
-
-
 # Let's replace the timestamp in document.xml. 
 (Get-Content .\$($WordDoc)\word\document.xml) -replace @(
 	       '(?<=w:author="{0} ({1})" )w:date="[^"]+"' -f $Author, $Organization
@@ -122,9 +102,7 @@ Compress-Archive -Path .\$($WordDoc)\* -CompressionLevel Optimal -DestinationPat
 
 # Let's rename the .zip back to .docx
 Rename-Item -Path $($ZipDocNew) -NewName $($WordDocNewExt)
-#Copy-Item $($ZipDocNew) -Destination $($WordDocNewExt)
 
 # We don't need the Zip file anymore. Let's delete it.
 Remove-Item -Recurse -Force $($WordDoc) 
-# Remove-Item $($ZipDocNew)
 
